@@ -28,14 +28,14 @@ app.use(rateLimit({
   message: { message: 'Too many requests, slow down.' }
 }))
 
+// Health check (before other routes)
+app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/admin', adminRoutes)
-
-// Health check
-app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
 
 // 404
 app.use((_, res) => res.status(404).json({ message: 'Not found' }))
