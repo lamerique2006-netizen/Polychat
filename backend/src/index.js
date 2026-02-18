@@ -46,10 +46,13 @@ app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' })
 })
 
-// Start
-initDb().then(() => {
-  app.listen(PORT, () => console.log(`PolyChat backend running on port ${PORT}`))
-}).catch(err => {
-  console.error('DB init failed:', err)
-  process.exit(1)
-})
+// Start (DB disabled temporarily for initial deploy)
+app.listen(PORT, () => console.log(`PolyChat backend running on port ${PORT}`))
+
+// Uncomment when database is ready:
+// initDb().then(() => {
+//   app.listen(PORT, () => console.log(`PolyChat backend running on port ${PORT}`))
+// }).catch(err => {
+//   console.error('DB init failed:', err)
+//   process.exit(1)
+// })
