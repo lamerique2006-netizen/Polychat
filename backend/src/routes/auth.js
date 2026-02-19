@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { pool } from '../db.js'
+import { supabase } from '../db.js'
 
 const router = Router()
 
@@ -15,15 +15,25 @@ router.post('/signup', async (req, res, next) => {
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' })
     if (password.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters' })
 
-    const exists = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()])
-    if (exists.rows.length) return res.status(409).json({ message: 'Email already registered' })
+    // Check if email exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single()
+    
+    if (existing) return res.status(409).json({ message: 'Email already registered' })
 
     const hashed = await bcrypt.hash(password, 12)
-    const { rows } = await pool.query(
-      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email, plan, created_at',
-      [email.toLowerCase(), hashed]
-    )
-    const user = rows[0]
+    
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({ email: email.toLowerCase(), password: hashed })
+      .select('id, email, plan, created_at')
+      .single()
+    
+    if (error) throw error
+    
     res.status(201).json({ token: signToken(user), user })
   } catch (err) { next(err) }
 })
@@ -34,14 +44,19 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = req.body
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' })
 
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()])
-    const user = rows[0]
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' })
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .single()
+    
+    if (error || !user) return res.status(401).json({ message: 'Invalid credentials' })
 
     const valid = await bcrypt.compare(password, user.password)
     if (!valid) return res.status(401).json({ message: 'Invalid credentials' })
 
     const { password: _, ...safeUser } = user
+    
     res.json({ token: signToken(safeUser), user: safeUser })
   } catch (err) { next(err) }
 })

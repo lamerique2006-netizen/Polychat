@@ -31,6 +31,18 @@ app.use(rateLimit({
 // Health check (before other routes)
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
 
+// Setup endpoint (one-time table creation)
+app.post('/setup', async (req, res) => {
+  try {
+    const { createTables } = await import('./db.js')
+    await createTables()
+    res.json({ success: true, message: 'Database tables created successfully' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/chat', chatRoutes)
@@ -46,13 +58,10 @@ app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' })
 })
 
-// Start (DB disabled temporarily for initial deploy)
-app.listen(PORT, () => console.log(`PolyChat backend running on port ${PORT}`))
-
-// Uncomment when database is ready:
-// initDb().then(() => {
-//   app.listen(PORT, () => console.log(`PolyChat backend running on port ${PORT}`))
-// }).catch(err => {
-//   console.error('DB init failed:', err)
-//   process.exit(1)
-// })
+// Start
+initDb().then(() => {
+  app.listen(PORT, () => console.log(`PolyChat backend running on port ${PORT}`))
+}).catch(err => {
+  console.error('DB init failed:', err)
+  process.exit(1)
+})
