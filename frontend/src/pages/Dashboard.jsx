@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../api'
 
@@ -9,6 +9,13 @@ const MODELS = [
   { id: 'claude-3-5-sonnet', label: 'Claude 3.5', color: 'text-orange-400', icon: '🟠', desc: 'Best reasoning' },
   { id: 'grok-2', label: 'Grok 2', color: 'text-blue-400', icon: '🔵', desc: 'Real-time' },
 ]
+
+function formatCost(cost) {
+  if (!cost) return '$0'
+  if (cost < 0.001) return `$${(cost * 1000).toFixed(2)}/1k`
+  if (cost < 1) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
+}
 
 function Message({ msg }) {
   const isUser = msg.role === 'user'
@@ -55,6 +62,7 @@ function Message({ msg }) {
                     </p>
                     <div className="flex items-center gap-3 text-xs text-gray-500 pt-3 border-t border-white/5">
                       <span>🪙 {result.tokens} tokens</span>
+                      <span>💰 {formatCost(result.cost)}</span>
                       <span>⚡ {result.responseTime}ms</span>
                     </div>
                   </>
@@ -297,6 +305,17 @@ export default function Dashboard() {
                   {selectedModels.length} model{selectedModels.length !== 1 ? 's' : ''} selected
                 </motion.div>
               )}
+              
+              {/* Analytics Link */}
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <Link
+                  to="/analytics"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                >
+                  <span className="text-lg">📊</span>
+                  <span className="font-medium text-sm">Usage Analytics</span>
+                </Link>
+              </div>
             </div>
 
             {/* User info */}

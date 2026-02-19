@@ -3,6 +3,7 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../db.js'
+import { estimateCost } from '../utils/pricing.js'
 
 const router = Router()
 
@@ -62,11 +63,13 @@ async function callModel(messages, modelId, modelConfig) {
     }
 
     const responseTime = Date.now() - startTime
+    const cost = estimateCost(modelId, result.tokens)
 
     return {
       model: modelId,
       content: result.content,
       tokens: result.tokens,
+      cost,
       responseTime,
       error: null,
     }

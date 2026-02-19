@@ -3,6 +3,7 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../db.js'
+import { estimateCost } from '../utils/pricing.js'
 
 const router = Router()
 
@@ -103,7 +104,8 @@ router.post('/', requireAuth, async (req, res, next) => {
       .update({ msg_count: user.msg_count + 1 })
       .eq('id', req.user.id)
 
-    res.json({ content: result.content, model: modelId, tokens: result.tokens })
+    const cost = estimateCost(modelId, result.tokens)
+    res.json({ content: result.content, model: modelId, tokens: result.tokens, cost })
   } catch (err) { next(err) }
 })
 
