@@ -50,7 +50,7 @@ async function callXAI(messages, model) {
 // POST /api/chat
 router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const { model: modelId, messages } = req.body
+    const { model: modelId, messages, conversationId } = req.body
     if (!modelId || !messages?.length) {
       return res.status(400).json({ message: 'model and messages are required' })
     }
@@ -93,6 +93,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     // Save to DB + increment counter
     await supabase.from('messages').insert({
       user_id: req.user.id,
+      conversation_id: conversationId || null,
       role: 'assistant',
       content: result.content,
       model: modelId,

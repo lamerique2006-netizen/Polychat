@@ -87,7 +87,7 @@ async function callModel(messages, modelId, modelConfig) {
 // POST /api/compare
 router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const { models, messages } = req.body
+    const { models, messages, conversationId } = req.body
     
     if (!models?.length || !messages?.length) {
       return res.status(400).json({ message: 'models and messages are required' })
@@ -143,6 +143,7 @@ router.post('/', requireAuth, async (req, res, next) => {
       if (!result.error) {
         await supabase.from('messages').insert({
           user_id: req.user.id,
+          conversation_id: conversationId || null,
           role: 'assistant',
           content: result.content,
           model: result.model,

@@ -117,6 +117,8 @@ export default function Dashboard() {
   const [model, setModel] = useState(MODELS[0].id)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedModels, setSelectedModels] = useState([MODELS[0].id, MODELS[1].id])
+  const [conversations, setConversations] = useState([])
+  const [currentConversation, setCurrentConversation] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -138,8 +140,56 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
+    fetchConversations()
+  }, [])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const fetchConversations = async () => {
+    try {
+      const { data } = await api.get('/conversations')
+      setConversations(data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const createNewConversation = async () => {
+    try {
+      const { data } = await api.post('/conversations', { title: 'New Chat' })
+      setCurrentConversation(data)
+      setMessages([])
+      await fetchConversations()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const loadConversation = async (convId) => {
+    try {
+      const conversation = conversations.find(c => c.id === convId)
+      setCurrentConversation(conversation)
+      const { data } = await api.get(`/conversations/${convId}/messages`)
+      setMessages(data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const deleteConversation = async (convId) => {
+    try {
+      await api.delete(`/conversations/${convId}`)
+      if (currentConversation?.id === convId) {
+        setCurrentConversation(null)
+        setMessages([])
+      }
+      await fetchConversations()
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const toggleModel = (modelId) => {
     if (selectedModels.includes(modelId)) {
@@ -153,6 +203,16 @@ export default function Dashboard() {
 
   const sendMessage = async () => {
     if (!input.trim() || sending) return
+    
+    // Create conversation if none exists
+    let convId = currentConversation?.id
+    if (!convId) {
+      const { data } = await api.post('/conversations', { title: input.trim().slice(0, 50) })
+      convId = data.id
+      setCurrentConversation(data)
+      await fetchConversations()
+    }
+
     const userMsg = { role: 'user', content: input.trim(), user: user?.email }
     setMessages(m => [...m, userMsg])
     setInput('')
@@ -160,17 +220,17 @@ export default function Dashboard() {
     
     try {
       if (compareMode) {
-        // Compare mode - send to multiple models
         const { data } = await api.post('/compare', {
           models: selectedModels,
           messages: [...messages, userMsg],
+          conversationId: convId
         })
         setMessages(m => [...m, { role: 'comparison', results: data.results }])
       } else {
-        // Single model mode
         const { data } = await api.post('/chat', {
           model,
           messages: [...messages, userMsg],
+          conversationId: convId
         })
         setMessages(m => [...m, { role: 'assistant', content: data.content, model: data.model }])
       }
@@ -231,8 +291,52 @@ export default function Dashboard() {
               </h1>
             </div>
 
+            {/* New Chat Button */}
+            <div className="p-4">
+              <motion.button
+                onClick={createNewConversation}
+                className="w-full bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white text-sm font-medium py-3 rounded-xl transition-all shadow-lg"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                ✨ New Chat
+              </motion.button>
+            </div>
+
+            {/* Conversations List */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <p className="text-xs text-gray-500 mb-2 px-1 uppercase tracking-wider">Recent Chats</p>
+              <div className="space-y-1">
+                {conversations.map(conv => (
+                  <motion.button
+                    key={conv.id}
+                    onClick={() => loadConversation(conv.id)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition group relative ${
+                      currentConversation?.id === conv.id
+                        ? 'bg-gray-800 text-white'
+                        : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
+                    }`}
+                    whileHover={{ x: 2 }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="truncate flex-1">{conv.title}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteConversation(conv.id)
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-2"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
             {/* Compare Mode Toggle */}
-            <div className="p-4 border-b border-white/5">
+            <div className="p-4 border-t border-white/5">
               <motion.button
                 onClick={() => setCompareMode(!compareMode)}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition ${
@@ -258,7 +362,7 @@ export default function Dashboard() {
             </div>
 
             {/* Model Selection */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="p-4 border-t border-white/5">
               <p className="text-xs text-gray-500 mb-3 px-1 uppercase tracking-wider">
                 {compareMode ? 'Select Models' : 'Select Model'}
               </p>
@@ -376,7 +480,7 @@ export default function Dashboard() {
                 )}
               </h2>
               <p className="text-xs text-gray-400 hidden sm:block">
-                {compareMode ? 'Send to multiple models at once' : 'Single model chat'}
+                {currentConversation?.title || (compareMode ? 'Send to multiple models at once' : 'Single model chat')}
               </p>
             </div>
           </div>
