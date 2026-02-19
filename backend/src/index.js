@@ -5,6 +5,7 @@ import { rateLimit } from 'express-rate-limit'
 
 import authRoutes from './routes/auth.js'
 import chatRoutes from './routes/chat.js'
+import compareRoutes from './routes/compare.js'
 import userRoutes from './routes/user.js'
 import adminRoutes from './routes/admin.js'
 import { initDb } from './db.js'
@@ -46,6 +47,7 @@ app.post('/setup', async (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/compare', compareRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/admin', adminRoutes)
 
